@@ -11,6 +11,23 @@ for that burst of windows to settle, and then brings Google Wallet to the front,
 overlay covers the screen from 0.4 s into the press until Google Wallet is on top (at most
 3 s), so Samsung's screens stay hidden. Short presses are untouched.
 
+### Recommended: disable Samsung Wallet for a clean "direct mode"
+
+The flicker exists only because Samsung Wallet's watch app owns the long press. Disable it
+(reversible, no root) and the firmware has nothing to open; the app then swallows the key
+itself: short press = Back, hold = Google Wallet, no overlay. The app switches modes on its own
+and shows the current one on its main screen.
+
+```sh
+adb shell pm disable-user --user 0 com.samsung.android.samsungpay.gear
+# undo:
+adb shell pm enable com.samsung.android.samsungpay.gear
+```
+
+A Samsung Wallet update can re-enable it; the app then falls back to the overlay mode until
+you run the command again. In direct mode Samsung Health keeps the raw button (it uses it during
+workouts).
+
 The main screen shows an event log (keys and windows the service saw), which helps when
 something doesn't work.
 
@@ -62,8 +79,8 @@ committed, so every build has the same signature) and the service stays enabled.
 
 ## Known limits
 
-- **The screen goes black for about a second** during a long press while Samsung's screens
-  open and close underneath.
+- **Without direct mode, the screen goes black for about a second** during a long press while
+  Samsung's screens open and close underneath.
 - **Samsung may switch the service off.** Some battery/"unused app" features disable
   accessibility services after updates or reboots. Open the app to check its status.
 - **Google Wallet must be installed** on the watch and set up for payments.

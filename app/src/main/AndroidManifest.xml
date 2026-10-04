@@ -6,6 +6,7 @@
     <!-- Needed to look up Google Wallet's launch intent on Android 11+. -->
     <queries>
         <package android:name="com.google.android.apps.walletnfcrel" />
+        <package android:name="com.samsung.android.samsungpay.gear" />
     </queries>
 
     <application
