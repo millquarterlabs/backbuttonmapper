@@ -14,8 +14,8 @@ overlay covers the screen from 0.4 s into the press until Google Wallet is on to
 ### Recommended: disable Samsung Wallet for a clean "direct mode"
 
 The flicker exists only because Samsung Wallet's watch app owns the long press. Disable it
-(reversible, no root) and the firmware has nothing to open; the app then swallows the key
-itself: short press = Back, hold = Google Wallet, no overlay. The app switches modes on its own
+(reversible, no root) and the firmware has nothing to open; the app then opens Google Wallet as
+soon as you hold the button, with no overlay. Short presses are left completely to the watch. The app switches modes on its own
 and shows the current one on its main screen.
 
 ```sh
