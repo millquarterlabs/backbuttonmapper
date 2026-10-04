@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Back Button Mapper</string>
+    <string name="service_label">Back Button Mapper</string>
+    <string name="service_description">Opens Google Wallet when you long press the Back (lower) button instead of Samsung Wallet. Short presses still go back. Nothing is read or collected.</string>
+    <string name="status_on">Service is ON.\nLong press Back to open Google Wallet.</string>
+    <string name="status_off">Service is OFF.\nTurn on \"Back Button Mapper\" in the watch\'s Accessibility settings (usually under Installed apps).</string>
+    <string name="wallet_missing">Google Wallet is not installed on this watch.</string>
+    <string name="open_settings">Open accessibility settings</string>
+    <string name="test_wallet">Test: open Google Wallet</string>
+    <string name="refresh_log">Event log (tap to refresh)</string>
+</resources>
