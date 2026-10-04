@@ -7,8 +7,9 @@ Short presses still go back as usual.
 It uses an accessibility service. On the Ultra 2 the firmware handles the long press itself
 before any app can stop it, and always opens something: Samsung Wallet (often several windows
 in a row) or Android's "Default wallet app" picker. The service leaves the button alone, waits
-for that burst of windows to settle, and then brings Google Wallet to the front, once. Expect
-a short flash of the Samsung screen. Short presses are untouched.
+for that burst of windows to settle, and then brings Google Wallet to the front, once. A black
+overlay covers the screen from 0.4 s into the press until Google Wallet is on top (at most
+3 s), so Samsung's screens stay hidden. Short presses are untouched.
 
 The main screen shows an event log (keys and windows the service saw), which helps when
 something doesn't work.
@@ -61,8 +62,8 @@ committed, so every build has the same signature) and the service stays enabled.
 
 ## Known limits
 
-- **Samsung's screen flashes briefly** before Google Wallet takes over; the firmware opens it
-  before any app can intervene.
+- **The screen goes black for about a second** during a long press while Samsung's screens
+  open and close underneath.
 - **Samsung may switch the service off.** Some battery/"unused app" features disable
   accessibility services after updates or reboots. Open the app to check its status.
 - **Google Wallet must be installed** on the watch and set up for payments.
