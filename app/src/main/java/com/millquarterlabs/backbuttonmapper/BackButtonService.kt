@@ -25,9 +25,9 @@ import android.view.accessibility.AccessibilityEvent
  * from shortly into the press until Google Wallet is on top.
  *
  * Direct mode: when Samsung Wallet is disabled (adb `pm disable-user`), the firmware has nothing to
- * open, so the service swallows the key itself: short presses become a normal Back, a hold opens
- * Google Wallet straight away. No overlay, no window watching. Samsung Health keeps the raw key,
- * since it uses the button during workouts.
+ * open. The service still lets every key through untouched (short presses are the watch's own
+ * Back) and only adds a timer: a hold opens Google Wallet straight away. No overlay, no window
+ * watching. Samsung Health is left alone, since it uses the button during workouts.
  */
 class BackButtonService : AccessibilityService() {
 
@@ -42,14 +42,10 @@ class BackButtonService : AccessibilityService() {
 
     // Direct mode state.
     private var foregroundPkg = ""
-    private var swallowing = false
-    private var longPressFired = false
-    private var passingThrough = false
-    private var replayedAt = 0L
+    private var directPressActive = false
 
     private val directLongPress = Runnable {
-        if (swallowing) {
-            longPressFired = true
+        if (directPressActive) {
             EventLog.add("long press -> Google Wallet")
             openWallet()
         }
@@ -74,10 +70,18 @@ class BackButtonService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode !in BACK_KEYS) return false
-        if (event.repeatCount > 0) return swallowing
+        if (event.repeatCount > 0) return false
         val down = event.action == KeyEvent.ACTION_DOWN
         EventLog.add("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (down) "down" else "up"}")
-        if (swallowing || passingThrough || (down && isDirectMode())) return directKey(down)
+        if (directPressActive || isDirectMode()) {
+            // Direct mode: never consume the key, so short presses stay the watch's own Back.
+            // A press held past LONG_PRESS_MS also opens Google Wallet. A new DOWN restarts the
+            // timer, so a lost UP can't leave anything stuck.
+            handler.removeCallbacks(directLongPress)
+            directPressActive = down
+            if (down) handler.postDelayed(directLongPress, LONG_PRESS_MS)
+            return false
+        }
         val now = SystemClock.uptimeMillis()
         if (down) {
             keyDownAt = now
@@ -93,33 +97,6 @@ class BackButtonService : AccessibilityService() {
             }
         }
         return false
-    }
-
-    /** Direct mode: swallow the key; Back on a short press, Google Wallet on a hold. */
-    private fun directKey(down: Boolean): Boolean {
-        val now = SystemClock.uptimeMillis()
-        if (down) {
-            // Our own GLOBAL_ACTION_BACK can come back through here; let it pass.
-            if (now - replayedAt < REPLAY_WINDOW_MS) {
-                passingThrough = true
-                return false
-            }
-            swallowing = true
-            longPressFired = false
-            handler.postDelayed(directLongPress, LONG_PRESS_MS)
-            return true
-        }
-        if (passingThrough) {
-            passingThrough = false
-            return false
-        }
-        swallowing = false
-        handler.removeCallbacks(directLongPress)
-        if (!longPressFired) {
-            replayedAt = now
-            performGlobalAction(GLOBAL_ACTION_BACK)
-        }
-        return true
     }
 
     private fun isDirectMode(): Boolean =
@@ -218,7 +195,6 @@ class BackButtonService : AccessibilityService() {
         )
         val PASSTHROUGH_PACKAGES = setOf("com.samsung.android.wear.shealth")
         const val LONG_PRESS_MS = 500L
-        const val REPLAY_WINDOW_MS = 150L
         const val COVER_AFTER_MS = 400L
         const val COVER_MAX_MS = 3000L
         const val UNCOVER_DELAY_MS = 150L
