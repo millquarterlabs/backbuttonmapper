@@ -17,9 +17,9 @@ import android.view.accessibility.AccessibilityEvent
  * opens Samsung Wallet). Short presses are replayed with [GLOBAL_ACTION_BACK]; a press held for
  * [LONG_PRESS_MS] launches Google Wallet instead.
  *
- * Fallback: if the firmware handles the long press before accessibility services get the key,
- * Samsung Wallet still opens. When that happens right after a Back press, we open Google Wallet
- * on top of it.
+ * Fallback: on some firmware Samsung handles the long press before accessibility services get
+ * the key, so we never see it. Whenever a Samsung Wallet window appears, we open Google Wallet on
+ * top of it.
  */
 class BackButtonService : AccessibilityService() {
 
@@ -33,25 +33,28 @@ class BackButtonService : AccessibilityService() {
     private var passingThrough = false
     private var replayedAt = 0L
 
-    private var lastBackDownAt = 0L
-    private var lastRedirectAt = 0L
 
     private val longPress = Runnable {
         if (tracking) {
             longPressFired = true
+            EventLog.add("long press -> Google Wallet")
             buzz()
             WalletLauncher.launch(this)
         }
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        EventLog.add(
+            "key ${KeyEvent.keyCodeToString(event.keyCode)} " +
+                (if (event.action == KeyEvent.ACTION_DOWN) "down" else "up") +
+                if (event.repeatCount > 0) " repeat=${event.repeatCount}" else ""
+        )
         if (event.keyCode != KeyEvent.KEYCODE_BACK) return false
 
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
                 if (event.repeatCount > 0) return tracking
                 val now = SystemClock.uptimeMillis()
-                lastBackDownAt = now
                 // GLOBAL_ACTION_BACK may be delivered back to us on some builds; let it through.
                 if (now - replayedAt < REPLAY_WINDOW_MS) {
                     passingThrough = true
@@ -84,15 +87,16 @@ class BackButtonService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
+        EventLog.add("window $pkg / ${event.className}")
         if (!isSamsungWallet(pkg)) return
 
-        val now = SystemClock.uptimeMillis()
-        val afterBackPress = now - lastBackDownAt < REDIRECT_WINDOW_MS
-        val notJustRedirected = now - lastRedirectAt > REDIRECT_WINDOW_MS
-        if (afterBackPress && notJustRedirected) {
-            lastRedirectAt = now
-            WalletLauncher.launch(this)
-        }
+        // Bringing Google Wallet to the front again is harmless if we already opened it.
+        EventLog.add("Samsung Wallet seen -> Google Wallet")
+        WalletLauncher.launch(this)
+    }
+
+    override fun onServiceConnected() {
+        EventLog.add("service connected")
     }
 
     override fun onInterrupt() = Unit
@@ -103,8 +107,7 @@ class BackButtonService : AccessibilityService() {
     }
 
     private fun isSamsungWallet(pkg: String): Boolean =
-        pkg.startsWith("com.samsung.android.") &&
-            (pkg.contains("pay") || pkg.contains("wallet"))
+        pkg.startsWith("com.samsung.") && (pkg.contains("pay") || pkg.contains("wallet"))
 
     private fun buzz() {
         val vibrator = getSystemService(Vibrator::class.java) ?: return
@@ -114,6 +117,5 @@ class BackButtonService : AccessibilityService() {
     private companion object {
         const val LONG_PRESS_MS = 500L
         const val REPLAY_WINDOW_MS = 150L
-        const val REDIRECT_WINDOW_MS = 3000L
     }
 }

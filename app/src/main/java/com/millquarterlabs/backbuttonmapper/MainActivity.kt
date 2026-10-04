@@ -18,6 +18,7 @@ class MainActivity : Activity() {
 
         findViewById<Button>(R.id.open_settings).setOnClickListener { openAccessibilitySettings() }
         findViewById<Button>(R.id.test_wallet).setOnClickListener { WalletLauncher.launch(this) }
+        findViewById<Button>(R.id.refresh_log).setOnClickListener { showLog() }
     }
 
     override fun onResume() {
@@ -25,6 +26,11 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.status).setText(
             if (isServiceEnabled()) R.string.status_on else R.string.status_off
         )
+        showLog()
+    }
+
+    private fun showLog() {
+        findViewById<TextView>(R.id.log).text = EventLog.dump()
     }
 
     private fun openAccessibilitySettings() {

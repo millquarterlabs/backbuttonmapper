@@ -10,9 +10,12 @@ Back key, swallows it, and decides what to do:
 - **Short press** → replayed as a normal "back".
 - **Held for 0.5 s** → short buzz, Google Wallet opens.
 - **Fallback:** if the watch firmware opens Samsung Wallet anyway (it handles the key before
-  accessibility services see it), the service notices Samsung Wallet appearing right after a
-  Back press and opens Google Wallet on top of it. Expect a brief flash of Samsung Wallet in
-  that case.
+  accessibility services see it), the service notices any Samsung Wallet window, including the
+  "set Samsung Wallet as your default payment app" prompt, and opens Google Wallet on top of
+  it. Expect a brief flash of Samsung Wallet in that case.
+
+The main screen shows an event log (keys and windows the service saw), which helps when
+something doesn't work.
 
 The app has no internet permission and reads nothing on screen; it only sees the Back key and
 the package name of the window that comes to the front.
@@ -70,5 +73,5 @@ committed, so every build has the same signature) and the service stays enabled.
 - **Samsung may switch the service off.** Some battery/"unused app" features disable
   accessibility services after updates or reboots. Open the app to check its status.
 - **Google Wallet must be installed** on the watch and set up for payments.
-- The fallback triggers on any Samsung Wallet window opened within 3 s of a Back press, so
-  opening Samsung Wallet from the app list right after pressing Back also redirects.
+- While the service is on, Samsung Wallet can't be opened at all: every Samsung Wallet window
+  is redirected to Google Wallet.

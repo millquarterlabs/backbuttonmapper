@@ -40,5 +40,21 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="@string/test_wallet" />
+
+        <Button
+            android:id="@+id/refresh_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/refresh_log" />
+
+        <TextView
+            android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:textSize="9sp" />
     </LinearLayout>
 </ScrollView>
