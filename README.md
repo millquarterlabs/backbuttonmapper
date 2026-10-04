@@ -23,9 +23,9 @@ the package name of the window that comes to the front.
 
 ## Get the APK
 
-Every push builds the APK in GitHub Actions. Open the latest run of **Build APK** under the
-repo's Actions tab and download the `backbuttonmapper-apk` artifact (a zip containing
-`app-debug.apk`).
+Every push builds the APK in GitHub Actions and publishes it to the `latest` pre-release:
+
+https://github.com/millquarterlabs/backbuttonmapper/releases/download/latest/backbuttonmapper.apk
 
 To build locally instead: install Android Studio (or the Android SDK + JDK 17) and run
 `./gradlew assembleDebug`. The APK lands in `app/build/outputs/apk/debug/`.
@@ -44,7 +44,7 @@ To build locally instead: install Android Studio (or the Android SDK + JDK 17) a
    ```sh
    adb pair <ip>:<pairing-port>        # enter the code from the watch
    adb connect <ip>:<port>             # the port shown on the Wireless debugging screen
-   adb install -r app-debug.apk
+   adb install -r backbuttonmapper.apk
    ```
 
 4. Open **Back Button Mapper** on the watch, tap **Open accessibility settings**, and turn the

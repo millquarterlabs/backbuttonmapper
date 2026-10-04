@@ -2,9 +2,14 @@ name: Build APK
 
 on:
   push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -17,7 +22,20 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew --no-daemon assembleDebug
+      - run: cp app/build/outputs/apk/debug/app-debug.apk backbuttonmapper.apk
       - uses: actions/upload-artifact@v4
         with:
           name: backbuttonmapper-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: backbuttonmapper.apk
+      # Keep a "latest" pre-release pointing at the newest build, so the APK has a stable
+      # direct link: releases/download/latest/backbuttonmapper.apk
+      - name: Publish to the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest backbuttonmapper.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Latest build" \
+            --notes "Built from ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}."
