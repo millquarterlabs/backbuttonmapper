@@ -23,9 +23,11 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        findViewById<TextView>(R.id.status).setText(
-            if (isServiceEnabled()) R.string.status_on else R.string.status_off
+        val status = getString(if (isServiceEnabled()) R.string.status_on else R.string.status_off)
+        val mode = getString(
+            if (SamsungWallet.isActive(this)) R.string.mode_redirect else R.string.mode_direct
         )
+        findViewById<TextView>(R.id.status).text = "$status\n\n$mode"
         showLog()
     }
 

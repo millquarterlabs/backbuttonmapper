@@ -12,8 +12,8 @@ android {
         // Wear OS 3 (API 30) and newer; the Galaxy Watch Ultra 2 runs a much newer release.
         minSdk = 30
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
     signingConfigs {

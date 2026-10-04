@@ -23,6 +23,11 @@ import android.view.accessibility.AccessibilityEvent
  *
  * To hide Samsung's screens while that happens, a black accessibility overlay covers the display
  * from shortly into the press until Google Wallet is on top.
+ *
+ * Direct mode: when Samsung Wallet is disabled (adb `pm disable-user`), the firmware has nothing to
+ * open, so the service swallows the key itself: short presses become a normal Back, a hold opens
+ * Google Wallet straight away. No overlay, no window watching. Samsung Health keeps the raw key,
+ * since it uses the button during workouts.
  */
 class BackButtonService : AccessibilityService() {
 
@@ -34,6 +39,21 @@ class BackButtonService : AccessibilityService() {
     private var walletLaunchedAt = 0L
 
     private var cover: View? = null
+
+    // Direct mode state.
+    private var foregroundPkg = ""
+    private var swallowing = false
+    private var longPressFired = false
+    private var passingThrough = false
+    private var replayedAt = 0L
+
+    private val directLongPress = Runnable {
+        if (swallowing) {
+            longPressFired = true
+            EventLog.add("long press -> Google Wallet")
+            openWallet()
+        }
+    }
 
     private val redirect = Runnable {
         if (pickerSeen) {
@@ -53,9 +73,11 @@ class BackButtonService : AccessibilityService() {
     private val hideCover = Runnable { hideCover() }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode !in BACK_KEYS || event.repeatCount > 0) return false
+        if (event.keyCode !in BACK_KEYS) return false
+        if (event.repeatCount > 0) return swallowing
         val down = event.action == KeyEvent.ACTION_DOWN
         EventLog.add("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (down) "down" else "up"}")
+        if (swallowing || passingThrough || (down && isDirectMode())) return directKey(down)
         val now = SystemClock.uptimeMillis()
         if (down) {
             keyDownAt = now
@@ -73,10 +95,41 @@ class BackButtonService : AccessibilityService() {
         return false
     }
 
+    /** Direct mode: swallow the key; Back on a short press, Google Wallet on a hold. */
+    private fun directKey(down: Boolean): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (down) {
+            // Our own GLOBAL_ACTION_BACK can come back through here; let it pass.
+            if (now - replayedAt < REPLAY_WINDOW_MS) {
+                passingThrough = true
+                return false
+            }
+            swallowing = true
+            longPressFired = false
+            handler.postDelayed(directLongPress, LONG_PRESS_MS)
+            return true
+        }
+        if (passingThrough) {
+            passingThrough = false
+            return false
+        }
+        swallowing = false
+        handler.removeCallbacks(directLongPress)
+        if (!longPressFired) {
+            replayedAt = now
+            performGlobalAction(GLOBAL_ACTION_BACK)
+        }
+        return true
+    }
+
+    private fun isDirectMode(): Boolean =
+        !SamsungWallet.isActive(this) && foregroundPkg !in PASSTHROUGH_PACKAGES
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
+        foregroundPkg = pkg
         EventLog.add("window $pkg / ${event.className}")
 
         val now = SystemClock.uptimeMillis()
@@ -102,7 +155,10 @@ class BackButtonService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
-        EventLog.add("service connected")
+        EventLog.add(
+            "service connected, " +
+                if (SamsungWallet.isActive(this)) "redirect mode" else "direct mode"
+        )
     }
 
     override fun onInterrupt() = Unit
@@ -160,7 +216,9 @@ class BackButtonService : AccessibilityService() {
             "com.google.android.permissioncontroller",
             "com.android.permissioncontroller",
         )
+        val PASSTHROUGH_PACKAGES = setOf("com.samsung.android.wear.shealth")
         const val LONG_PRESS_MS = 500L
+        const val REPLAY_WINDOW_MS = 150L
         const val COVER_AFTER_MS = 400L
         const val COVER_MAX_MS = 3000L
         const val UNCOVER_DELAY_MS = 150L
