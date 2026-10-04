@@ -3,8 +3,6 @@
 
     <uses-feature android:name="android.hardware.type.watch" />
 
-    <uses-permission android:name="android.permission.VIBRATE" />
-
     <!-- Needed to look up Google Wallet's launch intent on Android 11+. -->
     <queries>
         <package android:name="com.google.android.apps.walletnfcrel" />

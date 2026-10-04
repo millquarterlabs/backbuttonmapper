@@ -5,42 +5,35 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * Remaps a long press of the Back (lower) key to Google Wallet.
+ * Sends a long press of the Back (lower) key to Google Wallet.
  *
- * On the Galaxy Watch Ultra 2 the lower key arrives as KEYCODE_STEM_PRIMARY, not KEYCODE_BACK.
- * The service swallows every press of it so the system never sees a long press. Short presses are
- * replayed with [GLOBAL_ACTION_BACK]; a press held for [LONG_PRESS_MS] launches Google Wallet.
- *
- * Fallback: if the firmware still reacts to the long press, it shows either a Samsung Wallet
- * window or (once Google Wallet is the default wallet) Android's "Default wallet app" picker.
- * When either appears, we close it and open Google Wallet.
+ * On the Galaxy Watch Ultra 2 the lower key arrives as KEYCODE_STEM_PRIMARY, and the firmware acts
+ * on its long press before accessibility services can stop it: it always opens something, either
+ * Samsung Wallet (often several windows in a row) or Android's "Default wallet app" picker. So the
+ * service doesn't touch the key at all; it waits for that burst of windows to settle and then
+ * brings Google Wallet to the front, once.
  */
 class BackButtonService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    /** True while we are holding a Back press that we swallowed. */
-    private var tracking = false
-    private var longPressFired = false
+    private var keyDownAt = 0L
+    private var lastFirmwareScreenAt = 0L
+    private var pickerSeen = false
 
-    /** True while a Back press is passing through untouched (our own replayed short press). */
-    private var passingThrough = false
-    private var replayedAt = 0L
-
-    private var lastKeyDownAt = 0L
-    private var lastReactionAt = 0L
-
-    private val longPress = Runnable {
-        if (tracking) {
-            longPressFired = true
-            EventLog.add("long press -> Google Wallet")
-            buzz()
+    private val redirect = Runnable {
+        if (pickerSeen) {
+            // The picker is a plain settings screen; close it so it isn't left behind Wallet.
+            pickerSeen = false
+            EventLog.add("-> close picker, Google Wallet")
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            handler.postDelayed(launchWallet, AFTER_BACK_DELAY_MS)
+        } else {
+            EventLog.add("-> Google Wallet")
             WalletLauncher.launch(this)
         }
     }
@@ -48,42 +41,18 @@ class BackButtonService : AccessibilityService() {
     private val launchWallet = Runnable { WalletLauncher.launch(this) }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        EventLog.add(
-            "key ${KeyEvent.keyCodeToString(event.keyCode)} " +
-                (if (event.action == KeyEvent.ACTION_DOWN) "down" else "up") +
-                if (event.repeatCount > 0) " repeat=${event.repeatCount}" else ""
-        )
-        if (event.keyCode !in BACK_KEYS) return false
-
-        when (event.action) {
-            KeyEvent.ACTION_DOWN -> {
-                if (event.repeatCount > 0) return tracking
-                val now = SystemClock.uptimeMillis()
-                // GLOBAL_ACTION_BACK may be delivered back to us on some builds; let it through.
-                if (now - replayedAt < REPLAY_WINDOW_MS) {
-                    passingThrough = true
-                    return false
-                }
-                lastKeyDownAt = now
-                tracking = true
-                longPressFired = false
-                handler.postDelayed(longPress, LONG_PRESS_MS)
-                return true
-            }
-
-            KeyEvent.ACTION_UP -> {
-                if (passingThrough) {
-                    passingThrough = false
-                    return false
-                }
-                if (!tracking) return false
-                tracking = false
-                handler.removeCallbacks(longPress)
-                if (!longPressFired) goBack()
-                return true
-            }
+        if (event.keyCode !in BACK_KEYS || event.repeatCount > 0) return false
+        val down = event.action == KeyEvent.ACTION_DOWN
+        EventLog.add("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (down) "down" else "up"}")
+        val now = SystemClock.uptimeMillis()
+        if (down) {
+            keyDownAt = now
+        } else if (now - keyDownAt >= LONG_PRESS_MS && lastFirmwareScreenAt < keyDownAt) {
+            // Long press but the firmware showed nothing (yet): open Wallet ourselves.
+            EventLog.add("long press, no firmware screen -> Google Wallet")
+            WalletLauncher.launch(this)
         }
-        return tracking
+        return false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -91,21 +60,17 @@ class BackButtonService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         EventLog.add("window $pkg / ${event.className}")
 
-        // The picker is a normal settings screen too, so only treat it as the firmware's long press
-        // reaction when it pops up right after the key went down.
-        val firmwareReaction = isSamsungWallet(pkg) ||
-            (pkg in PICKER_PACKAGES &&
-                SystemClock.uptimeMillis() - lastKeyDownAt < PICKER_WINDOW_MS)
-        if (!firmwareReaction) return
-        // A screen can report several window changes; react once, or extra backs close Wallet.
         val now = SystemClock.uptimeMillis()
-        if (now - lastReactionAt < REACTION_DEBOUNCE_MS) return
-        lastReactionAt = now
+        val isPicker = pkg in PICKER_PACKAGES && now - keyDownAt < FIRMWARE_WINDOW_MS
+        if (!isSamsungWallet(pkg) && !isPicker) return
 
-        EventLog.add("firmware wallet screen -> close, Google Wallet")
-        goBack()
+        lastFirmwareScreenAt = now
+        if (isPicker) pickerSeen = true
+        // Samsung Wallet opens several windows in a row; restart the timer on each one so we only
+        // switch to Google Wallet after the last of them.
+        handler.removeCallbacks(redirect)
         handler.removeCallbacks(launchWallet)
-        handler.postDelayed(launchWallet, RELAUNCH_DELAY_MS)
+        handler.postDelayed(redirect, SETTLE_MS)
     }
 
     override fun onServiceConnected() {
@@ -119,18 +84,8 @@ class BackButtonService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
-    private fun goBack() {
-        replayedAt = SystemClock.uptimeMillis()
-        performGlobalAction(GLOBAL_ACTION_BACK)
-    }
-
     private fun isSamsungWallet(pkg: String): Boolean =
         pkg.startsWith("com.samsung.") && (pkg.contains("pay") || pkg.contains("wallet"))
-
-    private fun buzz() {
-        val vibrator = getSystemService(Vibrator::class.java) ?: return
-        vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-    }
 
     private companion object {
         val BACK_KEYS = setOf(KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_STEM_PRIMARY)
@@ -139,9 +94,8 @@ class BackButtonService : AccessibilityService() {
             "com.android.permissioncontroller",
         )
         const val LONG_PRESS_MS = 500L
-        const val REPLAY_WINDOW_MS = 150L
-        const val PICKER_WINDOW_MS = 2000L
-        const val RELAUNCH_DELAY_MS = 200L
-        const val REACTION_DEBOUNCE_MS = 1500L
+        const val FIRMWARE_WINDOW_MS = 3000L
+        const val SETTLE_MS = 250L
+        const val AFTER_BACK_DELAY_MS = 200L
     }
 }

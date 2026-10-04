@@ -4,16 +4,11 @@ A tiny Wear OS app for the Galaxy Watch Ultra 2 (and other Galaxy Watches) that 
 **long press of the Back (lower) button open Google Wallet** instead of Samsung Wallet.
 Short presses still go back as usual.
 
-It works the same way the paid remapper apps do: an accessibility service listens for the
-Back key (on the Ultra 2 it arrives as `KEYCODE_STEM_PRIMARY`), swallows it, and decides what
-to do:
-
-- **Short press** → replayed as a normal "back".
-- **Held for 0.5 s** → short buzz, Google Wallet opens.
-- **Fallback:** if the watch firmware opens Samsung Wallet anyway (it handles the key before
-  accessibility services see it), the service notices the screen it opens (any Samsung Wallet
-  window, or Android's "Default wallet app" picker shown right after the key press), closes it
-  and opens Google Wallet. Expect a brief flash in that case.
+It uses an accessibility service. On the Ultra 2 the firmware handles the long press itself
+before any app can stop it, and always opens something: Samsung Wallet (often several windows
+in a row) or Android's "Default wallet app" picker. The service leaves the button alone, waits
+for that burst of windows to settle, and then brings Google Wallet to the front, once. Expect
+a short flash of the Samsung screen. Short presses are untouched.
 
 The main screen shows an event log (keys and windows the service saw), which helps when
 something doesn't work.
@@ -66,11 +61,8 @@ committed, so every build has the same signature) and the service stays enabled.
 
 ## Known limits
 
-- **Samsung's firmware decides.** If a One UI Watch update routes the Back long press past
-  accessibility services, only the fallback works (Samsung Wallet flashes, then Google Wallet
-  opens).
-- **Double press of Back.** Because the service replays short presses itself, Samsung's
-  "double press" shortcut on the lower key may stop working while the service is on.
+- **Samsung's screen flashes briefly** before Google Wallet takes over; the firmware opens it
+  before any app can intervene.
 - **Samsung may switch the service off.** Some battery/"unused app" features disable
   accessibility services after updates or reboots. Open the app to check its status.
 - **Google Wallet must be installed** on the watch and set up for payments.
