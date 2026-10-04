@@ -5,14 +5,15 @@ A tiny Wear OS app for the Galaxy Watch Ultra 2 (and other Galaxy Watches) that 
 Short presses still go back as usual.
 
 It works the same way the paid remapper apps do: an accessibility service listens for the
-Back key, swallows it, and decides what to do:
+Back key (on the Ultra 2 it arrives as `KEYCODE_STEM_PRIMARY`), swallows it, and decides what
+to do:
 
 - **Short press** → replayed as a normal "back".
 - **Held for 0.5 s** → short buzz, Google Wallet opens.
 - **Fallback:** if the watch firmware opens Samsung Wallet anyway (it handles the key before
-  accessibility services see it), the service notices any Samsung Wallet window, including the
-  "set Samsung Wallet as your default payment app" prompt, and opens Google Wallet on top of
-  it. Expect a brief flash of Samsung Wallet in that case.
+  accessibility services see it), the service notices the screen it opens (any Samsung Wallet
+  window, or Android's "Default wallet app" picker shown right after the key press), closes it
+  and opens Google Wallet. Expect a brief flash in that case.
 
 The main screen shows an event log (keys and windows the service saw), which helps when
 something doesn't work.
