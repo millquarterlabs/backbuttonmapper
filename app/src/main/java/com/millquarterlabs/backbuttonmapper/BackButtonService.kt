@@ -84,6 +84,11 @@ class BackButtonService : AccessibilityService() {
                 (if (down) "down" else "up, held $held ms") +
                 if (lag > LATE_LOG_MS) " (arrived $lag ms late)" else ""
         )
+        if (!directPressActive && foregroundPkg in PASSTHROUGH_PACKAGES) {
+            // Samsung Health ends a workout on a long press of this button: leave it alone
+            // completely (no Wallet, no cover).
+            return false
+        }
         if (directPressActive || isDirectMode()) {
             // Direct mode: never consume the key, so short presses stay the watch's own Back.
             // A press held past LONG_PRESS_MS also opens Google Wallet. A new DOWN restarts the
@@ -121,8 +126,7 @@ class BackButtonService : AccessibilityService() {
         return false
     }
 
-    private fun isDirectMode(): Boolean =
-        !SamsungWallet.isActive(this) && foregroundPkg !in PASSTHROUGH_PACKAGES
+    private fun isDirectMode(): Boolean = !SamsungWallet.isActive(this)
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return

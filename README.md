@@ -25,8 +25,8 @@ adb shell pm enable com.samsung.android.samsungpay.gear
 ```
 
 A Samsung Wallet update can re-enable it; the app then falls back to the overlay mode until
-you run the command again. In direct mode Samsung Health keeps the raw button (it uses it during
-workouts).
+you run the command again. While Samsung Health is on screen the app ignores the button in both
+modes, so holding it still ends a workout.
 
 The main screen shows an event log (keys and windows the service saw), which helps when
 something doesn't work.
