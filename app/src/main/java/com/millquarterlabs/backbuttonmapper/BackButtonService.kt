@@ -43,9 +43,11 @@ class BackButtonService : AccessibilityService() {
     // Direct mode state.
     private var foregroundPkg = ""
     private var directPressActive = false
+    private var directWalletOpened = false
 
     private val directLongPress = Runnable {
         if (directPressActive) {
+            directWalletOpened = true
             EventLog.add("long press -> Google Wallet")
             openWallet()
         }
@@ -72,17 +74,37 @@ class BackButtonService : AccessibilityService() {
         if (event.keyCode !in BACK_KEYS) return false
         if (event.repeatCount > 0) return false
         val down = event.action == KeyEvent.ACTION_DOWN
-        EventLog.add("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (down) "down" else "up"}")
+        val now = SystemClock.uptimeMillis()
+        // Key events can reach us late (seen on the watch: several presses arriving within a few
+        // ms after it woke up), so time presses by the key's own timestamps, not by arrival.
+        val lag = now - event.eventTime
+        val held = event.eventTime - event.downTime
+        EventLog.add(
+            "key ${KeyEvent.keyCodeToString(event.keyCode)} " +
+                (if (down) "down" else "up, held $held ms") +
+                if (lag > LATE_LOG_MS) " (arrived $lag ms late)" else ""
+        )
         if (directPressActive || isDirectMode()) {
             // Direct mode: never consume the key, so short presses stay the watch's own Back.
             // A press held past LONG_PRESS_MS also opens Google Wallet. A new DOWN restarts the
             // timer, so a lost UP can't leave anything stuck.
             handler.removeCallbacks(directLongPress)
             directPressActive = down
-            if (down) handler.postDelayed(directLongPress, LONG_PRESS_MS)
+            if (down) {
+                directWalletOpened = false
+                // Runs at once if the DOWN arrived more than LONG_PRESS_MS late; a press that
+                // arrives very late is stale, so don't act on it.
+                if (lag < MAX_LATE_MS) {
+                    handler.postAtTime(directLongPress, event.downTime + LONG_PRESS_MS)
+                }
+            } else if (!directWalletOpened && held >= LONG_PRESS_MS && lag < MAX_LATE_MS) {
+                // The whole hold arrived late, after the timer could have fired.
+                directWalletOpened = true
+                EventLog.add("long press (late) -> Google Wallet")
+                openWallet()
+            }
             return false
         }
-        val now = SystemClock.uptimeMillis()
         if (down) {
             keyDownAt = now
             handler.postDelayed(showCover, COVER_AFTER_MS)
@@ -195,6 +217,8 @@ class BackButtonService : AccessibilityService() {
         )
         val PASSTHROUGH_PACKAGES = setOf("com.samsung.android.wear.shealth")
         const val LONG_PRESS_MS = 500L
+        const val LATE_LOG_MS = 100L
+        const val MAX_LATE_MS = 2000L
         const val COVER_AFTER_MS = 400L
         const val COVER_MAX_MS = 3000L
         const val UNCOVER_DELAY_MS = 150L
