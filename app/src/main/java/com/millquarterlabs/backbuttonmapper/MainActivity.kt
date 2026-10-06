@@ -23,6 +23,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (isServiceEnabled()) KeepAliveService.start(this)
         val status = getString(if (isServiceEnabled()) R.string.status_on else R.string.status_off)
         val mode = getString(
             if (SamsungWallet.isActive(this)) R.string.mode_redirect else R.string.mode_direct
