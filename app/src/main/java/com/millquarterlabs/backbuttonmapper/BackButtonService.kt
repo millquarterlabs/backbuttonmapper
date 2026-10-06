@@ -162,6 +162,7 @@ class BackButtonService : AccessibilityService() {
             "service connected, " +
                 if (SamsungWallet.isActive(this)) "redirect mode" else "direct mode"
         )
+        KeepAliveService.start(this)
     }
 
     override fun onInterrupt() = Unit

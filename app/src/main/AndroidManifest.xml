@@ -3,6 +3,10 @@
 
     <uses-feature android:name="android.hardware.type.watch" />
 
+    <!-- Keeps the process from being frozen in the background (see KeepAliveService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <!-- Needed to look up Google Wallet's launch intent on Android 11+. -->
     <queries>
         <package android:name="com.google.android.apps.walletnfcrel" />
@@ -39,6 +43,15 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service" />
+        </service>
+
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the button remapper responsive when the watch is idle" />
         </service>
     </application>
 </manifest>

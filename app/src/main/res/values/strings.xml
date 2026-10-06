@@ -11,4 +11,5 @@
     <string name="refresh_log">Event log (tap to refresh)</string>
     <string name="mode_direct">Samsung Wallet is disabled: direct mode, no flicker.</string>
     <string name="mode_redirect">Samsung Wallet is enabled: its screen is hidden behind a short black screen. Disable it via adb for direct mode (see README).</string>
+    <string name="keep_alive_channel">Keep running</string>
 </resources>
