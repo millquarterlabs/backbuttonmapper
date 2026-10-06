@@ -77,6 +77,17 @@ To build locally instead: install Android Studio (or the Android SDK + JDK 17) a
 Updates install over the old version with `adb install -r` (the debug signing key is
 committed, so every build has the same signature) and the service stays enabled.
 
+### If long presses are ignored after the watch was idle
+
+The watch can pause apps in the background, so the button reaches the app seconds late (the
+event log then says "arrived ... ms late"). The app keeps itself in the foreground for this, and
+its main screen shows whether it is exempt from battery optimization. If it says "optimized",
+tap **Allow running in background**, or run:
+
+```sh
+adb shell dumpsys deviceidle whitelist +com.millquarterlabs.backbuttonmapper
+```
+
 ## Known limits
 
 - **Without direct mode, the screen goes black for about a second** during a long press while

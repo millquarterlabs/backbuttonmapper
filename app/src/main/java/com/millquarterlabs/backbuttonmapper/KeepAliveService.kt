@@ -44,7 +44,15 @@ class KeepAliveService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (!running) EventLog.add("keep-alive running")
+        running = true
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        running = false
+        EventLog.add("keep-alive stopped")
+        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -52,6 +60,11 @@ class KeepAliveService : Service() {
     companion object {
         private const val CHANNEL_ID = "keep_alive"
         private const val NOTIFICATION_ID = 1
+
+        /** Whether the foreground service is up in this process. */
+        @Volatile
+        var running = false
+            private set
 
         fun start(context: Context) {
             try {

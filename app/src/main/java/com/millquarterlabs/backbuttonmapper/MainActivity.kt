@@ -3,7 +3,9 @@ package com.millquarterlabs.backbuttonmapper
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.widget.Button
@@ -19,6 +21,7 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.open_settings).setOnClickListener { openAccessibilitySettings() }
         findViewById<Button>(R.id.test_wallet).setOnClickListener { WalletLauncher.launch(this) }
         findViewById<Button>(R.id.refresh_log).setOnClickListener { showLog() }
+        findViewById<Button>(R.id.battery).setOnClickListener { requestBatteryExemption() }
     }
 
     override fun onResume() {
@@ -28,12 +31,40 @@ class MainActivity : Activity() {
         val mode = getString(
             if (SamsungWallet.isActive(this)) R.string.mode_redirect else R.string.mode_direct
         )
-        findViewById<TextView>(R.id.status).text = "$status\n\n$mode"
+        val keepAlive = getString(
+            if (KeepAliveService.running) R.string.keep_alive_on else R.string.keep_alive_off
+        )
+        val unrestricted = isIgnoringBatteryOptimizations()
+        val battery = getString(
+            if (unrestricted) R.string.battery_unrestricted else R.string.battery_restricted
+        )
+        findViewById<TextView>(R.id.status).text = "$status\n\n$mode\n\n$keepAlive\n$battery"
+        findViewById<Button>(R.id.battery).visibility =
+            if (unrestricted) android.view.View.GONE else android.view.View.VISIBLE
         showLog()
     }
 
     private fun showLog() {
         findViewById<TextView>(R.id.log).text = EventLog.dump()
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean =
+        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+
+    private fun requestBatteryExemption() {
+        // Exempting the app from battery optimization keeps the watch from pausing it in the
+        // background. Some watch builds have no dialog for this; then use the adb command
+        // from the README.
+        val intent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:$packageName"),
+        )
+        try {
+            startActivity(intent)
+        } catch (e: RuntimeException) {
+            EventLog.add("battery dialog unavailable: ${e.javaClass.simpleName}")
+            showLog()
+        }
     }
 
     private fun openAccessibilitySettings() {
