@@ -35,6 +35,14 @@
             android:text="@string/open_settings" />
 
         <Button
+            android:id="@+id/battery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/battery_button"
+            android:visibility="gone" />
+
+        <Button
             android:id="@+id/test_wallet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

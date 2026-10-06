@@ -6,6 +6,7 @@
     <!-- Keeps the process from being frozen in the background (see KeepAliveService). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Needed to look up Google Wallet's launch intent on Android 11+. -->
     <queries>

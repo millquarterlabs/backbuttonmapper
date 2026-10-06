@@ -12,4 +12,9 @@
     <string name="mode_direct">Samsung Wallet is disabled: direct mode, no flicker.</string>
     <string name="mode_redirect">Samsung Wallet is enabled: its screen is hidden behind a short black screen. Disable it via adb for direct mode (see README).</string>
     <string name="keep_alive_channel">Keep running</string>
+    <string name="keep_alive_on">Keep-alive: running.</string>
+    <string name="keep_alive_off">Keep-alive: NOT running.</string>
+    <string name="battery_unrestricted">Battery: unrestricted.</string>
+    <string name="battery_restricted">Battery: optimized, so the watch may pause the app. Tap below, or use the adb command from the README.</string>
+    <string name="battery_button">Allow running in background</string>
 </resources>
